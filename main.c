@@ -167,7 +167,7 @@ int main(void)
 	
 	Touchscreen_Calibration();
 
-	HomePage();
+		HomePage();
   ///Display_DemoDescription();
 		currentPage = 0;
     nextPage = 1;
@@ -179,6 +179,7 @@ int main(void)
 		while(1)
     {
 				
+				HAL_Delay(10);
         if(currentPage != nextPage)
         {
             switch(nextPage)
@@ -243,7 +244,7 @@ int main(void)
                         }
 												for(i = 0 ; i < convertList ; i++)
 												{
-													if(x >= 395 && x <= 455 && y >= LINE(6 + i * 2) - 5 && y < LINE(6 + i * 2 + 1) + 5)
+													if(x >= 415 && x <= 595 && y >= 24 * (6 + i * 2) - 5 && y < 24 * (6 + i * 2 + 1) + 5)
 													{
 														nextPage = VC_PAGE;
 														target = convertListname[i];

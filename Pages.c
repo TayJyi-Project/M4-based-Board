@@ -47,6 +47,7 @@ static uint8_t AudioRec_State;
 static uint32_t AudioRecFullBuff_addr;
 
 static __IO uint16_t CurrentPosition;
+extern TS_StateTypeDef  TS_State;
 
 void HomePage(void)
 {
@@ -140,7 +141,7 @@ void VCListPage(uint8_t *list[], uint8_t size)
     BSP_LCD_SetTextColor(setTitleColor );
     BSP_LCD_DisplayStringAt(150, LINE(3), (uint8_t *)"Your Voice Conversion List", LEFT_MODE);
     
-    BSP_LCD_SetFont(&Font20);
+    BSP_LCD_SetFont(&Font24);
     ///BSP_LCD_SetBackColor(setBgColor);
     ///BSP_LCD_SetTextColor(setListColor );
     for(i = 0 ; i < size ; i++)
@@ -176,6 +177,8 @@ void VCPage(char * targetName)
 		uint32_t setTitleColor = 0xFF48f9d9;
     uint32_t setButtonColor = 0xFF000000;
     uint32_t setBackTextColor = 0xFFFFFFFF;
+	
+		Point playButtonPoints[] = {{385, 324}, {430, 350}, {385, 376}};
 		
 		BSP_LCD_Clear(setBgColor);
 		
@@ -195,10 +198,9 @@ void VCPage(char * targetName)
     BSP_LCD_DisplayStringAt(0, LINE(12), (uint8_t *)"release to finish.", CENTER_MODE);
 		
 	
-		
+		/* Back button */
     BSP_LCD_SetTextColor(setButtonColor);
     BSP_LCD_FillRect(660, 350, 100, 45);
-    
     BSP_LCD_SetFont(&Font24);
     BSP_LCD_SetBackColor(setButtonColor);
     BSP_LCD_SetTextColor(setBackTextColor);
@@ -238,6 +240,18 @@ void VCPage(char * targetName)
 		/* Infinite loop */
 		while(!is_record)
 		{
+			BSP_TS_GetState(&TS_State); 
+			if (TS_State.touchDetected)
+			{
+					uint16_t x, y;
+					uint8_t i;
+					x = TouchScreen_Get_Calibrated_X(TS_State.touchX[0]);
+					y = TouchScreen_Get_Calibrated_Y(TS_State.touchY[0]);
+					if( x >= 655 && x <= 765 && y >= 345 && y <= 405  )
+					{
+							return;    
+					}
+			}
 			if(BSP_PB_GetState(BUTTON_USER) == PB_RESET)
 			{
 				HAL_Delay(10);
@@ -329,8 +343,15 @@ void VCPage(char * targetName)
 				}
 			}
 		}
-
-		/* Stop recorder once buffer_ctl.rec_length < AUDIO_REC_TOTAL_SIZE*/
+		
+		
+		/** Clear the line "Recording" **/
+		BSP_LCD_SetBackColor(setBgColor);
+		BSP_LCD_SetTextColor(setBgColor);
+		BSP_LCD_DisplayStringAt(0, BSP_LCD_GetYSize() - 80, (uint8_t *)"                        ", CENTER_MODE);
+		
+		
+		/* Stop recorder once buffer_ctl.rec_length < AUDIO_REC_TOTAL_SIZE * 4 */
 		BSP_AUDIO_IN_Stop();
 		
     BSP_LCD_SetFont(&Font20);
@@ -347,13 +368,12 @@ void VCPage(char * targetName)
 
 		/* -----------Start Playback -------------- */
 		
-		HAL_Delay(500);
 		/* Initialize audio IN at REC_FREQ*/
 		if(BSP_AUDIO_OUT_Init(OUTPUT_DEVICE_HEADPHONE, 60/*Volume*/, DEFAULT_AUDIO_IN_FREQ/2) == 0)
 		{
 			///BSP_LCD_SetBackColor(LCD_COLOR_WHITE);
 			///BSP_LCD_SetTextColor(LCD_COLOR_GREEN);
-			BSP_LCD_DisplayStringAt(0, BSP_LCD_GetYSize() - 95, (uint8_t *)"  AUDIO CODEC   OK  ", CENTER_MODE);
+			///BSP_LCD_DisplayStringAt(0, BSP_LCD_GetYSize() - 95, (uint8_t *)"  AUDIO CODEC   OK  ", CENTER_MODE);
 		}
 		else
 		{
@@ -363,17 +383,48 @@ void VCPage(char * targetName)
 			BSP_LCD_DisplayStringAt(0, BSP_LCD_GetYSize() - 80, (uint8_t *)" Try to reset board ", CENTER_MODE);
 		}
 
-		/* Play the recorded buffer*/
+		/*** Play the recorded buffer ***/
 		uint32_t maxLength;
 		if(buffer_ctl.rec_length > AUDIO_REC_TOTAL_SIZE * 4)
 			maxLength = AUDIO_REC_TOTAL_SIZE * 4;
 		else maxLength = buffer_ctl.rec_length;
 		
+		
+		/** Play Button **/
+		BSP_LCD_SetTextColor(LCD_COLOR_WHITE);
+    BSP_LCD_FillCircle(400, 350, 50);
+		BSP_LCD_SetTextColor(LCD_COLOR_RED);
+		BSP_LCD_FillPolygon(playButtonPoints, 3);
+		
+		while(1)
+    {
+			BSP_TS_GetState(&TS_State); 
+			if(TS_State.touchDetected)
+			{
+				uint16_t x, y;
+				uint8_t i;
+				x = TouchScreen_Get_Calibrated_X(TS_State.touchX[0]);
+				y = TouchScreen_Get_Calibrated_Y(TS_State.touchY[0]);
+				if(x >= 345 && x <= 455 && y >= 295 && y <= 405)
+				{
+					break;
+				}
+			}
+		}
+		
+		/** Stop Button **/
+		BSP_LCD_SetTextColor(LCD_COLOR_WHITE);
+    BSP_LCD_FillCircle(400, 350, 50);
+		BSP_LCD_SetTextColor(LCD_COLOR_RED);
+		BSP_LCD_FillRect(370, 330, 20, 40);
+		BSP_LCD_FillRect(410, 330, 20, 40);
+		
+		
 		if(AUDIO_Play_Start((uint32_t *)AUDIO_REC_START_ADDR, (uint32_t)maxLength) == 0)
 		{
 			///BSP_LCD_SetBackColor(LCD_COLOR_WHITE);
 			///BSP_LCD_SetTextColor(LCD_COLOR_GREEN);
-			BSP_LCD_DisplayStringAt(0, BSP_LCD_GetYSize() - 95, (uint8_t *)"  AUDIO PLAYBACK   OK  ", CENTER_MODE);
+			///BSP_LCD_DisplayStringAt(0, BSP_LCD_GetYSize() - 95, (uint8_t *)"  AUDIO PLAYBACK   OK  ", CENTER_MODE);
 		} else
 		{
 			BSP_LCD_SetBackColor(LCD_COLOR_WHITE);
@@ -383,22 +434,65 @@ void VCPage(char * targetName)
 		
 		BSP_LCD_DisplayStringAt(0, BSP_LCD_GetYSize() - 45, (uint8_t *)"PLAYBACK DONE", CENTER_MODE);
 
+		uint8_t is_play = 1;
+		
 		while (1)
 		{
 			/* Toggle LED4 */
 			BSP_LED_Toggle(LED4);
 
-			/* Insert 100 ms delay */
-			HAL_Delay(100);
-			if (CheckForUserInput() > 0)
+			/* Insert 100 ms delay , sheep change it to 10ms*/
+			HAL_Delay(10);
+			BSP_TS_GetState(&TS_State); 
+			if (TS_State.touchDetected)
 			{
 				/* Set LED4 */
 				BSP_LED_On(LED4);
 				/* Stop recorder */
-				BSP_AUDIO_IN_Stop();
+				uint16_t x, y;
+				uint8_t i;
+				x = TouchScreen_Get_Calibrated_X(TS_State.touchX[0]);
+				y = TouchScreen_Get_Calibrated_Y(TS_State.touchY[0]);
+				if(!is_play && x >= 345 && x <= 455 && y >= 295 && y <= 405)
+				{
+					is_play = 1;
+					BSP_AUDIO_OUT_Resume();
+					
+					/** Stop Button **/
+					BSP_LCD_SetTextColor(LCD_COLOR_WHITE);
+					BSP_LCD_FillCircle(400, 350, 50);
+					BSP_LCD_SetTextColor(LCD_COLOR_RED);
+					BSP_LCD_FillRect(370, 330, 20, 40);
+					BSP_LCD_FillRect(410, 330, 20, 40);
+					
+					//break;
+				}
+				else if(is_play && x >= 345 && x <= 455 && y >= 295 && y <= 405)
+				{
+					is_play = 0;
+					BSP_AUDIO_OUT_Pause();
+					
+					/** Play Button **/
+					BSP_LCD_SetTextColor(LCD_COLOR_WHITE);
+					BSP_LCD_FillCircle(400, 350, 50);
+					BSP_LCD_SetTextColor(LCD_COLOR_RED);
+					BSP_LCD_FillPolygon(playButtonPoints, 3);
+		
+					//break;
+				}
+				else if( x >= 655 && x <= 765 && y >= 345 && y <= 405  )
+				{
+						BSP_AUDIO_IN_Stop();
+						BSP_AUDIO_OUT_Pause();
+						BSP_AUDIO_OUT_Stop(CODEC_PDWN_SW);
+						return;    
+				}
+				///BSP_AUDIO_IN_Stop();
 				/* Stop Player before close Test */
-				BSP_AUDIO_OUT_Stop(CODEC_PDWN_SW);
-				break;
+				
+        ////BSP_AUDIO_OUT_Pause();
+				///BSP_AUDIO_OUT_Stop(CODEC_PDWN_SW);
+				///break;
 				//return;
 			}
 		}
