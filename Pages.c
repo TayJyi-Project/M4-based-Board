@@ -254,7 +254,7 @@ void VCPage(char * targetName)
 			}
 			if(BSP_PB_GetState(BUTTON_USER) == PB_RESET)
 			{
-				HAL_Delay(10);
+				HAL_Delay(50);
 				while (buffer_ctl.rec_length < AUDIO_REC_TOTAL_SIZE * 4 && BSP_PB_GetState(BUTTON_USER) == PB_RESET)
 				{
 					is_record = 1;
@@ -441,8 +441,8 @@ void VCPage(char * targetName)
 			/* Toggle LED4 */
 			BSP_LED_Toggle(LED4);
 
-			/* Insert 100 ms delay , sheep change it to 10ms*/
-			HAL_Delay(10);
+			/* Insert 100 ms delay , sheep change it to 50ms*/
+			HAL_Delay(50);
 			BSP_TS_GetState(&TS_State); 
 			if (TS_State.touchDetected)
 			{
